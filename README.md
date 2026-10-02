@@ -1,0 +1,1 @@
+# industrial-data-architectures-in-practice
