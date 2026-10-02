@@ -1,0 +1,304 @@
+[
+    {
+        "id": "f6f2187d.f17ca8",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "3cc11d24.ff01a2",
+        "type": "comment",
+        "z": "f6f2187d.f17ca8",
+        "name": "WARNING: please check you have started this container with a volume that is mounted to /data\\n otherwise any flow changes are lost when you redeploy or upgrade the container\\n (e.g. upgrade to a more recent node-red docker image).\\n  If you are using named volumes you can ignore this warning.\\n Double click or see info side panel to learn how to start Node-RED in Docker to save your work",
+        "info": "\nTo start docker with a bind mount volume (-v option), for example:\n\n```\ndocker run -it -p 1880:1880 -v /home/user/node_red_data:/data --name mynodered nodered/node-red\n```\n\nwhere `/home/user/node_red_data` is a directory on your host machine where you want to store your flows.\n\nIf you do not do this then you can experiment and redploy flows, but if you restart or upgrade the container the flows will be disconnected and lost. \n\nThey will still exist in a hidden data volume, which can be recovered using standard docker techniques, but that is much more complex than just starting with a named volume as described above.",
+        "x": 350,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "4b48b636d2907db1",
+        "type": "inject",
+        "z": "f6f2187d.f17ca8",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "1",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 250,
+        "y": 320,
+        "wires": [
+            [
+                "7a5e126dc3ac5042"
+            ]
+        ]
+    },
+    {
+        "id": "2bd9b47a4eaaa485",
+        "type": "OpcUa-Client",
+        "z": "f6f2187d.f17ca8",
+        "endpoint": "0a2272848436a39f",
+        "action": "readmultiple",
+        "deadbandtype": "a",
+        "deadbandvalue": 1,
+        "time": 10,
+        "timeUnit": "s",
+        "certificate": "l",
+        "localfile": "",
+        "localkeyfile": "",
+        "securitymode": "None",
+        "securitypolicy": "None",
+        "useTransport": false,
+        "maxChunkCount": 1,
+        "maxMessageSize": 8192,
+        "receiveBufferSize": 8192,
+        "sendBufferSize": 8192,
+        "setstatusandtime": false,
+        "keepsessionalive": false,
+        "name": "",
+        "applicationName": "",
+        "applicationUri": "",
+        "x": 660,
+        "y": 320,
+        "wires": [
+            [
+                "44164888443b497e"
+            ],
+            [],
+            []
+        ]
+    },
+    {
+        "id": "7a5e126dc3ac5042",
+        "type": "function",
+        "z": "f6f2187d.f17ca8",
+        "name": "function 2",
+        "func": "msg.topic = \"readmultiple\";\n\nmsg.payload = [\"ns=4;i=58\",\n               \"ns=4;i=59\",\n               \"ns=4;i=61\",\n               \"ns=4;i=62\",\n               \"ns=4;i=63\",\n               \"ns=4;i=64\", \n               \"ns=4;i=79\",\n               \"ns=4;i=90\",\n               \"ns=4;i=101\", \n               \"ns=4;i=112\",\n               \"ns=4;i=123\",\n                \"ns=4;i=134\",\n                \"ns=4;i=145\",];  \n \n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 440,
+        "y": 320,
+        "wires": [
+            [
+                "2bd9b47a4eaaa485"
+            ]
+        ]
+    },
+    {
+        "id": "44164888443b497e",
+        "type": "function",
+        "z": "f6f2187d.f17ca8",
+        "name": "function 3",
+        "func": "// 1. Verificăm dacă payload-ul este un array valid\nif (msg.payload && Array.isArray(msg.payload)) {\n    let arrayBrut = [];\n\n    // 2. Iterăm prin cele 11 obiecte primite de la OPC UA și extragem doar valoarea numerică\n    for (let i = 0; i < msg.payload.length; i++) {\n        let element = msg.payload[i];\n        let valoare = null;\n\n        if (element !== undefined && element !== null) {\n            // Extrage .value.value dacă structura este dublu-imbricată, altfel .value\n            if (element.value && element.value.value !== undefined) {\n                valoare = element.value.value;\n            } else if (element.value !== undefined) {\n                valoare = element.value;\n            } else {\n                valoare = element;\n            }\n        }\n        arrayBrut.push(valoare);\n    }\n\n    // 3. Adăugăm timestamp-ul curent generat de sistem ca ultimul element (indexul 11)\n    let dataConstruita = new Date().toISOString();\n    arrayBrut.push(dataConstruita);\n\n    // 4. Pregătim string-ul JSON curat pentru MQTT (fără array-uri imbricate)\n    msg.payload = JSON.stringify(arrayBrut);\n    \n    // Deoarece nodul OPC UA trimite deja tot pachetul deodată, nu mai avem nevoie de stocare în context\n    return msg;\n}\n\n// Dacă mesajul nu este un array valid, îl ignorăm\nreturn null;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 860,
+        "y": 320,
+        "wires": [
+            [
+                "7c3b12968551d9a3",
+                "283b3d5495ce87d7"
+            ]
+        ]
+    },
+    {
+        "id": "7c3b12968551d9a3",
+        "type": "debug",
+        "z": "f6f2187d.f17ca8",
+        "name": "debug 7",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1080,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "283b3d5495ce87d7",
+        "type": "mqtt out",
+        "z": "f6f2187d.f17ca8",
+        "name": "",
+        "topic": "FactoryA/Line1/Machine1/Telemetry",
+        "qos": "",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "5381f491928c981d",
+        "x": 1160,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "1670da3051928986",
+        "type": "mqtt in",
+        "z": "f6f2187d.f17ca8",
+        "name": "",
+        "topic": "Write_Senzori_Date/Write_Temp_Setpoint",
+        "qos": "1",
+        "datatype": "auto-detect",
+        "broker": "5381f491928c981d",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 360,
+        "y": 600,
+        "wires": [
+            [
+                "35e4edfa4aeb1665"
+            ]
+        ]
+    },
+    {
+        "id": "35e4edfa4aeb1665",
+        "type": "function",
+        "z": "f6f2187d.f17ca8",
+        "name": "function 4",
+        "func": "// Extrage valoarea din payload-ul Ignition\nvar value = parseFloat(msg.payload);\n\n// Format corect pentru OPC UA Client Write\nmsg.payload = [\n    {\n        nodeId: \"ns=4;i=58\",\n        value: {\n            value: {\n                dataType: 10,  // Float\n                value: value\n            }\n        }\n    }\n];\n\nmsg.topic = \"writeNodesToSession\";\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 640,
+        "y": 600,
+        "wires": [
+            [
+                "2b6f3c0ffb39d84a"
+            ]
+        ]
+    },
+    {
+        "id": "2b6f3c0ffb39d84a",
+        "type": "OpcUa-Client",
+        "z": "f6f2187d.f17ca8",
+        "endpoint": "0a2272848436a39f",
+        "action": "write",
+        "deadbandtype": "a",
+        "deadbandvalue": 1,
+        "time": 10,
+        "timeUnit": "s",
+        "certificate": "l",
+        "localfile": "",
+        "localkeyfile": "",
+        "securitymode": "None",
+        "securitypolicy": "None",
+        "useTransport": false,
+        "maxChunkCount": 1,
+        "maxMessageSize": 8192,
+        "receiveBufferSize": 8192,
+        "sendBufferSize": 8192,
+        "setstatusandtime": false,
+        "keepsessionalive": false,
+        "name": "",
+        "applicationName": "",
+        "applicationUri": "",
+        "x": 840,
+        "y": 600,
+        "wires": [
+            [
+                "24a885bd8bb6e717"
+            ],
+            [],
+            []
+        ]
+    },
+    {
+        "id": "24a885bd8bb6e717",
+        "type": "debug",
+        "z": "f6f2187d.f17ca8",
+        "name": "debug 2",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1100,
+        "y": 580,
+        "wires": []
+    },
+    {
+        "id": "0a2272848436a39f",
+        "type": "OpcUa-Endpoint",
+        "name": "S7-1200 OPCUA Server",
+        "endpoint": "opc.tcp://192.168.0.1:4840",
+        "secpol": "None",
+        "secmode": "None",
+        "none": true,
+        "login": false,
+        "usercert": false,
+        "usercertificate": "",
+        "userprivatekey": ""
+    },
+    {
+        "id": "5381f491928c981d",
+        "type": "mqtt-broker",
+        "name": "EMXQ",
+        "broker": "192.168.0.15",
+        "port": 1883,
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "5",
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "735545e93e0b072f",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "node-red-contrib-opcua": "0.2.351"
+        }
+    }
+]
